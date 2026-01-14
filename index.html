@@ -3648,6 +3648,32 @@ document.addEventListener("DOMContentLoaded", ()=>{
 });
 </script>
 
+
+<script>
+(function(){
+  const PASS = "harris";
+  let unlocked = false;
+
+  document.addEventListener("click", function(e){
+    const btn = e.target.closest && e.target.closest("#hamburgerBtn");
+    if(!btn) return;
+
+    if(unlocked) return;
+
+    e.stopImmediatePropagation();
+    e.preventDefault();
+
+    const entered = prompt("Enter password:");
+    if(entered === PASS){
+      unlocked = true;
+      btn.click();
+    }else{
+      alert("Incorrect password.");
+    }
+  }, true);
+})();
+</script>
+
 </body>
 
 </html>
