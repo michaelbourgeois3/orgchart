@@ -1,0 +1,3653 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title> – Free Floating Starburst (Leaders + Staff)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100&display=swap');
+
+html,body{height:100%;margin:0}
+body{
+  background:
+    radial-gradient(900px 600px at 15% 15%,rgba(96,165,250,.18),transparent 60%),
+    radial-gradient(900px 600px at 85% 20%,rgba(56,189,248,.45),transparent 60%),
+    radial-gradient(900px 600px at 65% 85%,rgba(245,158,11,.14),transparent 55%),
+    linear-gradient(180deg,#0b1d36,#071427);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;
+  color:#f7fafc;
+  overflow:hidden;
+}
+header{
+  position:relative;
+  z-index:1000;
+
+  height:56px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:0 16px;
+  background:rgba(10,16,30,.65);
+  border-bottom:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(12px);
+}
+header .spacer{flex:1}
+button,label{
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.18);
+  color:#fff;
+  border-radius:10px;
+  padding:8px 10px;
+  font-weight:700;
+  cursor:pointer;
+}
+label input{display:none}
+main{position:absolute;inset:56px 0 0 0;z-index:1}
+#stage{position:relative;width:100%;height:100%;touch-action:none}
+#viewport{position:absolute;inset:0;transform:translate(0px,0px)}
+svg{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  overflow:visible;
+}
+.line{
+  stroke:rgba(255,255,255,.35);
+  stroke-width:2;
+}
+.line.root{ stroke: rgba(45,212,191,.55); stroke-width:2.6; }
+
+#nodes{position:absolute;inset:0;z-index:1}
+
+.node{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  cursor:grab;
+  user-select:none;
+}
+.node:active{cursor:grabbing}
+
+.circle{
+  width:56px;height:56px;border-radius:50%;
+  background:#0b1220;
+  border:3px solid rgba(255,255,255,.35);
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  box-shadow:0 10px 18px rgba(0,0,0,.25);
+}
+.node.leader .circle{width:64px;height:64px;border-color:#60a5fa;border-width:4px}
+.node.root .circle{width:72px;height:72px;border-color:#fbbf24;border-width:4px}
+
+.circle img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;-webkit-user-drag:none;user-drag:none}
+.initials{font-weight:900;letter-spacing:.5px}
+
+.label{
+  position:absolute;
+  left:calc(100% + 12px);
+  top:50%;
+  transform:translateY(-50%);
+  white-space:nowrap;
+  pointer-events:none;
+}
+.name{font-weight:900;font-size:13px}
+.title{font-size:11px;color:rgba(247,250,252,.7)}
+
+.node.selected .circle{
+  box-shadow:0 0 0 4px rgba(245,158,11,.8),0 0 26px rgba(245,158,11,.6);
+}
+
+.node.fade-out{opacity:0.1;transition:opacity .25s ease}
+.node.zoom-root{animation:zoomIn .35s ease}
+@keyframes zoomIn{from{transform:translate(-50%,-50%) scale(.85)}to{transform:translate(-50%,-50%) scale(1)}}
+
+
+
+
+/* --- WYSIWYG authoring additions --- */
+#loadLayoutLbl{display:inline-flex;align-items:center;gap:8px}
+#toast{
+  position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+  z-index:6000;
+  background:rgba(0,0,0,.55);
+  border:1px solid rgba(255,255,255,.18);
+  padding:10px 12px;border-radius:12px;
+  backdrop-filter:blur(10px);
+  font-size:12px;opacity:0;pointer-events:none;
+  transition:opacity .18s ease, transform .18s ease;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+
+
+/* --- Dept close button fix --- */
+.node .dept-close{
+  z-index: 10;
+  pointer-events: auto;
+}
+
+
+.dept{font-size:11px;opacity:.55;margin-top:2px}
+
+header{
+  min-height:96px; /* doubled header height */
+  display:flex;
+  align-items:center;
+}
+header img{
+  height:56px; /* scale logo up for taller header */
+}
+
+/* --- Hamburger menu (moves all header controls except Reset Layout) --- */
+.hamburger{ position:relative; }
+#hamburgerBtn{
+  width:44px; height:44px;
+  display:grid; place-items:center;
+  font-size:22px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:10px;
+}
+#hamburgerBtn:hover{ background:rgba(255,255,255,.12); }
+.hamburger-menu{
+  position:absolute;
+  right:0;
+  top:calc(100% + 10px);
+  min-width:240px;
+  background:rgba(10,16,30,.95);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:14px;
+  padding:10px;
+  display:none;
+  z-index:6000;
+  backdrop-filter:blur(12px);
+  box-shadow:0 18px 40px rgba(0,0,0,.45);
+}
+.hamburger-menu.open{ display:block; }
+.hamburger-menu button,
+.hamburger-menu label{
+  display:flex;
+  width:100%;
+  justify-content:flex-start;
+  margin:6px 0;
+}
+.hamburger-menu label{ cursor:pointer; }
+.hamburger-menu label input{ display:none; }
+
+
+#searchInput::placeholder{color:rgba(247,250,252,.6)}
+#searchInput:focus{box-shadow:0 0 0 3px rgba(96,165,250,.35)}
+
+
+/* --- Density reduction --- */
+.name{font-size:12px;font-weight:800}
+.title{font-size:10px}
+.dept{font-size:10px}
+
+.circle{width:50px;height:50px}
+.node.leader .circle{width:60px;height:60px}
+.node.root .circle{width:70px;height:70px}
+
+.label{left:calc(100% + 10px)}
+
+
+/* Ensure Back button never appears in hamburger */
+#backBtn{display:none !important;}
+
+
+/* --- Proximity glow effect --- */
+.circle{
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.circle.glow{
+  box-shadow:
+    0 0 0 3px rgba(96,165,250,.6),
+    0 0 18px rgba(96,165,250,.55);
+}
+
+
+/* --- Fixed header instructions --- */
+#instructions{
+  position:fixed;
+  top:96px; /* under header */
+  left:16px;
+  z-index:900;
+  max-width:320px;
+  font-size:11px;
+  line-height:1.45;
+  color:rgba(247,250,252,.8);
+  background:rgba(10,16,30,.55);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;
+  padding:10px 12px;
+  backdrop-filter:blur(10px);
+}
+#instructions strong{
+  font-weight:800;
+  font-size:11px;
+  color:#fff;
+}
+
+
+/* --- Smooth zoom --- */
+#viewport{
+  transition: transform 120ms ease-out;
+}
+
+
+/* --- Search disambiguation overlay --- */
+#searchOverlay{position:fixed;inset:0;z-index:7500;display:none;}
+#searchOverlay.open{display:block;}
+#searchResults{
+  position:fixed;
+  width:420px;
+  max-width:calc(100vw - 32px);
+  background:rgba(10,16,30,.98);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:0 18px 40px rgba(0,0,0,.45);
+}
+.search-item{padding:10px 12px;cursor:pointer;font-size:12px;line-height:1.25;}
+.search-item.active{background:rgba(96,165,250,.28);} 
+.search-item:hover{background:rgba(96,165,250,.18);}
+.search-item strong{font-weight:800;}
+.search-item .meta{opacity:.65;margin-top:2px;font-size:11px;}
+
+
+#viewport{transform-origin:0 0;}
+
+/* --- Department hierarchy tweak --- */
+.dept{
+  color: rgba(45,212,191,.9); /* same green family as root lines */
+  font-weight: 800;
+  letter-spacing: .6px;
+  font-size: 10px;
+  opacity: 1;
+  margin-bottom: 2px;
+}
+
+
+/* --- Department label typography refinement --- */
+.dept{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-weight: 700;
+  font-stretch: condensed; /* supported where available */
+  letter-spacing: .8px;
+  text-transform: uppercase;
+
+  max-width: 140px;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.15;
+}
+
+
+/* --- Text wrapping + subtle text shadow refinement --- */
+
+/* Ensure department names wrap only at word boundaries */
+.dept{
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: none;
+}
+
+/* Subtle text shadow for readability (all labels) */
+.name,
+.title,
+.dept{
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
+}
+
+
+/* --- Reduce department label size on chart --- */
+.dept{
+  font-size: 9px;      /* slightly smaller */
+  letter-spacing: .7px;
+  margin-bottom: 1px;
+}
+
+
+/* --- How to use toggle (replaces boxed instructions) --- */
+#instructions.howto{
+  position:fixed;
+  top:96px;
+  left:16px;
+  z-index:900;
+  max-width:320px;
+  font-size:11px;
+  line-height:1.45;
+  color:rgba(247,250,252,.9);
+  background:transparent;
+  border:none;
+  padding:0;
+  backdrop-filter:none;
+}
+.howto-toggle{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  cursor:pointer;
+  user-select:none;
+}
+.howto-icon{
+  width:20px;
+  height:20px;
+  border-radius:50%;
+  border:1.5px solid rgba(255,255,255,.9);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  font-size:13px;
+  line-height:1;
+}
+.howto-title{
+  font-weight:800;
+  letter-spacing:.9px;
+  font-size:11px;
+}
+.howto-body{
+  margin-top:10px;
+  max-width:260px;
+  color:rgba(247,250,252,.85);
+  text-shadow:0 1px 2px rgba(0,0,0,.45);
+}
+
+
+/* --- How-to size + spacing refinement --- */
+#instructions.howto{
+  top:116px;            /* push down from header */
+  font-size:10.5px;     /* slightly smaller overall */
+}
+
+.howto-title{
+  font-size:10px;
+  letter-spacing:1px;
+}
+
+.howto-body{
+  font-size:10.2px;
+  margin-top:8px;
+}
+
+.howto-icon{
+  width:18px;
+  height:18px;
+  font-size:12px;
+}
+
+
+/* --- Center the X icon more precisely --- */
+.howto-icon{
+  line-height: 1;
+  padding-bottom: 1px; /* nudges × visually to center */
+}
+
+
+/* --- Header layout fixes --- */
+.header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  position:relative;
+}
+
+.header-left{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.header-right{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+/* Force search to sit flush against right-side buttons */
+.header-right .search-wrap,
+.header-right .header-search{
+  margin-right:0 !important;
+  margin-left:0 !important;
+}
+
+/* Center title */
+.header-title{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  font-weight:900;
+  letter-spacing:2px;
+  font-size:16px; /* bigger */
+  opacity:.9;
+  pointer-events:none;
+}
+
+
+/* --- Header title + search alignment (override) --- */
+header{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.header-title{
+  position:static !important;
+  transform:none !important;
+  font-weight:300;
+  font-size:32px;           /* ~2x previous */
+  letter-spacing:1.6px;
+  opacity:.9;
+  line-height:1;
+  white-space:nowrap;
+}
+
+/* Push search + buttons to the right */
+#searchInput{
+  margin-left:auto;
+}
+
+
+/* --- Header alignment hard fix --- */
+header{
+  display:flex;
+  align-items:center;
+}
+
+.header-title{
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight:300;
+  font-size:32px;
+  letter-spacing:1.4px;
+}
+
+/* push search + buttons to far right */
+#searchInput{
+  margin-left:auto !important;
+}
+
+
+/* ===============================
+   Hamburger Menu – Visual Cleanup
+   =============================== */
+.hamburger-menu{
+  box-sizing: border-box;
+  padding: 12px;
+}
+.hamburger-menu button,
+.hamburger-menu label{
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px 12px;
+  margin: 6px 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: 10px;
+  white-space: normal;
+  text-align: left;
+}
+.hamburger-menu button span,
+.hamburger-menu label span{
+  overflow-wrap: anywhere;
+}
+.hamburger-menu button:hover,
+.hamburger-menu label:hover{
+  background: rgba(255,255,255,.14);
+}
+@media (max-height: 700px){
+  .hamburger-menu{
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+
+
+/* ===============================
+   Premium Person Card
+   =============================== */
+#personModal{animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+#personCard{
+  border-radius:20px !important;
+  padding:18px !important;
+}
+#personCard::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:20px;
+  pointer-events:none;
+  background: radial-gradient(600px 220px at 30% 0%, rgba(56,189,248,.20), transparent 60%),
+              radial-gradient(520px 220px at 80% 10%, rgba(245,158,11,.16), transparent 60%);
+  opacity:.9;
+}
+#personCard .pc-wrap{
+  position:relative;
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+}
+#personCard .pc-left{
+  width:160px;
+  flex:0 0 auto;
+}
+#personCard .pc-avatar{
+  width:160px;
+  height:160px;
+  border-radius:22px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 20px 45px rgba(0,0,0,.45);
+  background:rgba(255,255,255,.06);
+  display:grid;
+  place-items:center;
+}
+#personCard .pc-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+#personCard .pc-initials{
+  font-weight:900;
+  font-size:28px;
+  letter-spacing:.5px;
+  color:rgba(255,255,255,.9);
+}
+#personCard .pc-right{
+  flex:1;
+  min-width:0;
+  padding-top:28px; /* reserve space for close button */
+}
+#pcName{
+  text-align:left !important;
+  font-weight:900 !important;
+  font-size:18px !important;
+  line-height:1.1;
+  margin:2px 0 6px 0;
+}
+#pcTitle{
+  text-align:left !important;
+  opacity:.85 !important;
+  margin:0 0 10px 0 !important;
+  font-size:13px !important;
+}
+.pc-badges{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:12px;
+}
+.pc-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  font-size:11px;
+  letter-spacing:.3px;
+  opacity:.95;
+  max-width:100%;
+}
+.pc-chip strong{font-weight:800}
+.pc-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+.pc-action{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.06);
+  color:#fff;
+  text-decoration:none;
+  font-size:12px;
+  font-weight:700;
+}
+.pc-action:hover{background:rgba(255,255,255,.10)}
+.pc-action .muted{opacity:.8;font-weight:700}
+.pc-grid{
+  margin-top:14px;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+.pc-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(10,16,30,.35);
+}
+.pc-row .k{
+  font-size:11px;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  opacity:.6;
+  white-space:nowrap;
+}
+.pc-row .v{
+  font-size:12px;
+  font-weight:700;
+  opacity:.92;
+  text-align:right;
+  word-break:break-word;
+}
+#pcViewDept{
+  width:100%;
+  margin:12px 0 0 0 !important;
+  padding:10px 12px !important;
+  border-radius:14px !important;
+  font-weight:800 !important;
+  letter-spacing:.4px;
+  background:rgba(56,189,248,.18) !important;
+  border:1px solid rgba(56,189,248,.35) !important;
+}
+#pcViewDept:hover{background:rgba(56,189,248,.24) !important}
+
+
+/* --- Header control height + no-fill cleanup --- */
+header button,
+header .hamburger button,
+header label{
+  height:44px;
+  min-height:44px;
+  padding:0 14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:transparent !important;
+}
+
+#hamburgerBtn{
+  background:transparent !important;
+}
+
+/* Remove fill but keep outline */
+header button,
+header label{
+  border:1px solid rgba(255,255,255,.35);
+}
+
+/* Match search bar radius exactly */
+header button,
+header label,
+#searchInput{
+  border-radius:10px;
+}
+
+
+/* --- Header title typography to match department labels --- */
+.header-title{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: rgba(45,212,191,.9);
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
+}
+
+
+/* --- Header title: match DEPT typography (condensed) + 60% opacity color --- */
+.header-title{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-weight: 700;
+  font-stretch: condensed;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: rgba(247,250,252,.6); /* 60% opacity of original header text color */
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
+}
+
+
+/* --- Header title: Roboto Flex Thin --- */
+.header-title{
+  font-family: 'Roboto Flex', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-weight: 100;
+  font-stretch: condensed;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(247,250,252,.6);
+  text-shadow: 0 1px 2px rgba(0,0,0,.45);
+}
+
+
+/* --- Lower left logo slightly --- */
+#homeLogo{
+  margin-top:20px;
+}
+
+
+/* ===============================
+   Global Typography: Roboto Flex
+   =============================== */
+
+/* Base font */
+body{
+  font-family: 'Roboto Flex', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-weight: 400;
+}
+
+/* Header title (thin, airy) */
+.header-title{
+  font-weight: 100;
+  font-stretch: condensed;
+}
+
+/* Department labels (narrow, strong) */
+.dept{
+  font-weight: 700;
+  font-stretch: condensed;
+  letter-spacing: .7px;
+}
+
+/* Names */
+.name{
+  font-weight: 600;
+}
+
+/* Titles / subtitles */
+.title{
+  font-weight: 400;
+}
+
+/* Buttons / UI controls */
+button,
+label{
+  font-weight: 600;
+}
+
+/* Search input text */
+#searchInput{
+  font-weight: 400;
+}
+
+/* Person card */
+#pcName{
+  font-weight: 700;
+}
+#pcTitle{
+  font-weight: 400;
+}
+.pc-chip strong{
+  font-weight: 700;
+}
+.pc-row .k{
+  font-weight: 600;
+}
+.pc-row .v{
+  font-weight: 500;
+}
+
+
+/* --- Names: bump to bold --- */
+.name{
+  font-weight: 700;
+}
+
+
+/* ===============================
+   Kerning + weight corrections
+   =============================== */
+
+/* Loosen overall tracking slightly */
+body{
+  letter-spacing: .15px;
+}
+
+/* Explicit weights to avoid inheritance conflicts */
+.name{
+  font-weight: 700 !important;
+  letter-spacing: .25px;
+}
+
+.title{
+  letter-spacing: .2px;
+}
+
+.dept{
+  letter-spacing: .9px;
+}
+
+.header-title{
+  letter-spacing: 1.6px;
+}
+
+/* UI controls slightly looser */
+button,
+label,
+#searchInput{
+  letter-spacing: .3px;
+}
+
+
+/* ===============================
+   GLOBAL FONT OVERRIDE: Plus Jakarta Sans
+   =============================== */
+body,
+button,
+label,
+input,
+.header-title,
+.name,
+.title,
+.dept,
+.pc-row,
+.pc-chip,
+.pc-action,
+#pcName,
+#pcTitle {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif !important;
+}
+
+/* Hierarchy */
+.header-title { font-weight: 300; letter-spacing: 1.4px; }
+.dept { font-weight: 700; letter-spacing: .9px; }
+.name { font-weight: 700; letter-spacing: .25px; }
+.title { font-weight: 400; letter-spacing: .2px; }
+button, label { font-weight: 600; }
+#pcName { font-weight: 700; }
+#pcTitle { font-weight: 400; }
+
+
+/* ===============================
+   Noise Reduction #1:
+   Hide title + department by default
+   =============================== */
+
+/* Default: show NAME only */
+.node .title,
+.node .dept{
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity .15s ease, max-height .15s ease;
+}
+
+/* Reveal on hover, selection, or focus */
+.node:hover .title,
+.node:hover .dept,
+.node.selected .title,
+.node.selected .dept{
+  opacity: 1;
+  max-height: 40px;
+}
+
+
+/* ===============================
+   Noise Reduction #2:
+   Stronger fade for non-active branches
+   =============================== */
+
+/* Base visibility */
+.node{
+  transition: opacity .2s ease;
+}
+
+/* When a leader is selected, fade everything */
+.node.fade-out{
+  opacity: 0.15;
+}
+
+/* Always keep root and selected nodes fully visible */
+.node.root,
+.node.selected{
+  opacity: 1 !important;
+}
+
+
+/* ===============================
+   Noise Reduction #4:
+   Zoom-based detail reveal
+   =============================== */
+
+/* Default: circles only */
+.zoom-low .label{ opacity:0; pointer-events:none; }
+
+/* Medium zoom: show names */
+.zoom-mid .name{ opacity:1; }
+.zoom-mid .title,
+.zoom-mid .dept{ opacity:0; max-height:0; }
+
+/* High zoom: show name + title */
+.zoom-high .name,
+.zoom-high .title{ opacity:1; max-height:40px; }
+.zoom-high .dept{ opacity:0; }
+
+/* Very high zoom: show all */
+.zoom-full .label *{ opacity:1; max-height:40px; }
+
+
+/* ===============================
+   Emphasize Susan Bourgeois photo
+   =============================== */
+.node[data-name="Susan Bourgeois"] .photo,
+.node.root .photo{
+  transform: scale(1.4);
+  transform-origin: center;
+}
+
+
+/* ===============================
+   Hamburger button alignment + border
+   =============================== */
+
+/* Match border style with other header buttons */
+#hamburgerBtn{
+  border: 1px solid rgba(255,255,255,.35);
+  background: transparent;
+  padding: 0;
+}
+
+/* Center the bars perfectly */
+#hamburgerBtn span,
+#hamburgerBtn div{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* If using pseudo-bars */
+#hamburgerBtn::before,
+#hamburgerBtn::after{
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+
+/* ===============================
+   Hamburger button: hard center fix
+   =============================== */
+
+#hamburgerBtn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Inner icon wrapper */
+#hamburgerBtn > *{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* Bars themselves */
+#hamburgerBtn span,
+#hamburgerBtn .bar{
+  margin: 0;
+}
+
+
+/* ===============================
+   Hamburger: pixel-perfect centering
+   =============================== */
+
+/* Force same height as other header buttons */
+#hamburgerBtn{
+  height: 44px;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+/* Absolutely center the icon stack */
+#hamburgerBtn .hamburger,
+#hamburgerBtn .icon,
+#hamburgerBtn svg,
+#hamburgerBtn > div{
+  position: relative;
+  top: 1px; /* optical adjustment */
+}
+
+/* Normalize bar spacing */
+#hamburgerBtn span,
+#hamburgerBtn .bar{
+  display: block;
+  height: 2px;
+  margin: 3px 0;
+}
+
+
+/* ===============================
+   Hamburger icon font-metric fix
+   =============================== */
+
+/* If hamburger is a text glyph (☰), kill font padding */
+#hamburgerBtn{
+  line-height: 0;
+}
+
+/* Directly target the glyph */
+#hamburgerBtn::before,
+#hamburgerBtn span,
+#hamburgerBtn .hamburger,
+#hamburgerBtn .icon{
+  line-height: 1;
+}
+
+/* Final optical correction */
+#hamburgerBtn > *{
+  transform: translateY(2px);
+}
+
+
+/* ===============================
+   Hamburger icon: SVG (no font metrics)
+   =============================== */
+#hamburgerBtn{
+  width:44px;
+  height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  line-height:0; /* ensure no font ascent affects layout */
+}
+
+#hamburgerBtn svg{
+  width:22px;
+  height:22px;
+  display:block;
+}
+
+#hamburgerBtn svg rect{
+  fill: rgba(255,255,255,.9);
+}
+
+
+/* ===============================
+   FINAL: Remove legacy hamburger offsets
+   =============================== */
+#hamburgerBtn .hamburger,
+#hamburgerBtn .icon,
+#hamburgerBtn svg,
+#hamburgerBtn > div{
+  position: static !important;
+  top: auto !important;
+  transform: none !important;
+}
+
+#hamburgerBtn > *{
+  transform: none !important;
+}
+
+#hamburgerBtn{
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#hamburgerBtn svg{
+  transform: none !important;
+  margin: 0 !important;
+}
+
+
+/* ===============================
+   Zoom text behavior (CSS-only, safe)
+   =============================== */
+
+/* Default (initial load and above): all text visible */
+.node .name,
+.node .title,
+.node .dept{
+  opacity: 1;
+  max-height: 40px;
+  transition: opacity .15s ease;
+}
+
+/* Low zoom: department only */
+.zoom-low .node .name,
+.zoom-low .node .title{
+  opacity: 0;
+  max-height: 0;
+}
+
+.zoom-low .node .dept{
+  opacity: 1;
+  max-height: 30px;
+}
+
+/* Very zoomed out: hide all text */
+.zoom-low.zoom-far .node .name,
+.zoom-low.zoom-far .node .title,
+.zoom-low.zoom-far .node .dept{
+  opacity: 0;
+  max-height: 0;
+}
+
+
+/* ===============================
+   Zoom-low behavior: dept only (hover reveals all)
+   =============================== */
+
+/* At zoom-low: hide name + title */
+.zoom-low .node .name,
+.zoom-low .node .title{
+  opacity: 0;
+  max-height: 0;
+  pointer-events: none;
+}
+
+/* At zoom-low: show department */
+.zoom-low .node .dept{
+  opacity: 1;
+  max-height: 30px;
+}
+
+/* Hover overrides at zoom-low */
+.zoom-low .node:hover .name,
+.zoom-low .node:hover .title{
+  opacity: 1;
+  max-height: 40px;
+  pointer-events: auto;
+}
+
+
+/* ===============================
+   Zoom-low: department ONLY (no hover reveal)
+   =============================== */
+
+/* At zoom-low: hide name + title completely */
+.zoom-low .node .name,
+.zoom-low .node .title{
+  opacity: 0;
+  max-height: 0;
+  pointer-events: none;
+}
+
+/* At zoom-low: show department */
+.zoom-low .node .dept{
+  opacity: 1;
+  max-height: 30px;
+}
+
+
+/* ===============================
+   FINAL OVERRIDE: zoom-low = dept only, hover reveals all
+   =============================== */
+
+/* Default at zoom-low: dept only */
+.zoom-low .node .name,
+.zoom-low .node .title{
+  opacity: 0 !important;
+  max-height: 0 !important;
+  pointer-events: none !important;
+}
+
+.zoom-low .node .dept{
+  opacity: 1 !important;
+  max-height: 30px !important;
+}
+
+/* Hover at zoom-low: reveal name + title (dept stays visible) */
+.zoom-low .node:hover .name,
+.zoom-low .node:hover .title{
+  opacity: 1 !important;
+  max-height: 40px !important;
+  pointer-events: none !important; /* labels are non-interactive anyway */
+}
+
+
+/* ===============================
+   Text refinements: dept + title wrapping
+   =============================== */
+
+/* Smaller department titles */
+.node .dept{
+  font-size: 8px;
+  line-height: 1.1;
+  letter-spacing: .6px;
+}
+
+/* Better title line breaks (no mid-word breaks) */
+.node .title{
+  max-width: 140px;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+  line-height: 1.25;
+}
+
+/* Slightly smaller names for balance */
+.node .name{
+  font-size: 11.5px;
+  line-height: 1.2;
+}
+
+
+/* ===============================
+   Emphasize Susan Bourgeois photo
+   =============================== */
+.node[data-name="Susan Bourgeois"] .photo,
+.node.root .photo{
+  transform: scale(1.35);
+  transform-origin: center;
+}
+
+
+/* ===============================
+   Susan Bourgeois fixed size (90px)
+   =============================== */
+.node[data-name="Susan Bourgeois"] .photo,
+.node[data-name="Susan Bourgeois"] .circle,
+.node.root .photo,
+.node.root .circle{
+  width: 90px !important;
+  height: 90px !important;
+  max-width: 90px !important;
+  max-height: 90px !important;
+}
+
+
+/* ===============================
+   Zoom-out behavior: department only
+   =============================== */
+
+/* Default (normal zoom): show all text */
+.node .name,
+.node .title,
+.node .dept{
+  opacity: 1;
+  max-height: 40px;
+}
+
+/* Zoomed out: department title only */
+.zoom-low .node .name,
+.zoom-low .node .title{
+  opacity: 0;
+  max-height: 0;
+}
+
+.zoom-low .node .dept{
+  opacity: 1;
+  max-height: 30px;
+}
+
+
+/* ===============================
+   FIX: zoom-low was hiding the entire label
+   (Noise Reduction #4 sets .zoom-low .label { opacity:0 })
+   We override so department remains visible.
+   =============================== */
+
+.zoom-low .label{
+  opacity: 1 !important;
+  pointer-events: none !important;
+}
+
+/* zoom-low: department ONLY */
+.zoom-low .name,
+.zoom-low .title{
+  opacity: 0 !important;
+  max-height: 0 !important;
+}
+
+.zoom-low .dept{
+  opacity: 1 !important;
+  max-height: 30px !important;
+}
+
+
+/* ===============================
+   Thinner connector lines
+   =============================== */
+svg line,
+svg path{
+  stroke-width: 0.4 !important;
+}
+
+
+/* ===============================
+   Widen label boxes by +40px
+   =============================== */
+.node .label{
+  padding-right: calc(40px + 0px); /* add 40px effective width */
+}
+
+
+/* ===============================
+   Dept label width tuning (less aggressive wrap)
+   =============================== */
+
+/* Give department titles more horizontal room */
+.node .dept{
+  max-width: 180px;   /* was tighter before */
+  white-space: normal;
+}
+
+
+/* ===============================
+   Dept label width tuning (200px)
+   =============================== */
+.node .dept{
+  max-width: 200px;
+}
+
+
+/* ===============================
+   Dept titles: force break after ampersand
+   =============================== */
+.node .dept{
+  max-width: 260px;
+}
+
+/* Force & to end the line cleanly */
+.node .dept{
+  word-spacing: 0.1em;
+}
+.node .dept::after{
+  content: "";
+}
+
+
+/* ===============================
+   Larger clickable hit area for card close (X)
+   =============================== */
+
+/* Assume .card-close or .close-btn is the X element */
+.card-close,
+.close-btn,
+.card .close {
+  position: absolute;
+}
+
+/* Invisible hit target overlay */
+.card-close::before,
+.close-btn::before,
+.card .close::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  bottom: -12px;
+  left: -12px;
+  cursor: pointer;
+}
+
+
+/* --- Person card close button hard safety --- */
+#personClose{ pointer-events:auto !important; }
+#personClose svg{ pointer-events:none; }
+#personCard{ overflow: visible; }
+
+
+/* ===============================
+   Department Focus Mode (Step 2)
+   =============================== */
+body.dept-focus .node{
+  opacity: 0.1;
+  filter:blur(1.4px) saturate(0.9);
+  transition:opacity .25s ease, filter .25s ease;
+}
+body.dept-focus .node.focused{
+  opacity:1 !important;
+  filter:none !important;
+}
+body.dept-focus .node.focused{
+  filter:none !important;
+}
+
+
+/* --- Root always stays in focus --- */
+body.dept-focus .node.root{
+  opacity:1 !important;
+  filter:none !important;
+}
+
+
+/* ===============================
+   Dept Focus – Line De-emphasis
+   =============================== */
+
+/* Default line behavior */
+.line{
+  transition: opacity .25s ease, filter .25s ease;
+}
+
+/* Fade + blur ALL lines when in dept focus */
+body.dept-focus .line{
+  opacity:0.15;
+  filter:blur(1px);
+}
+
+/* Keep active branch lines crisp */
+body.dept-focus .line.focused-line{
+  opacity:1 !important;
+  filter:none !important;
+}
+
+
+/* --- Focused lines must always stay fully visible --- */
+body.dept-focus .line.focused-line{
+  opacity:1 !important;
+  filter:none !important;
+}
+
+
+/* Solid node backdrop to block SVG bleed */
+.node::before{
+  content:"";
+  position:absolute;
+  inset:-4px;
+  background:rgba(10,20,35,0.4);
+  border-radius:50%;
+  z-index:-1;
+}
+  border-radius:50%;
+  z-index:-1;
+}
+
+
+/* Strong fade ONLY for non-focused nodes */
+body.dept-focus .node:not(.focused)::before{
+  background:rgba(10,20,35,0.98);
+}
+
+
+/* Disable legacy View Department feature */
+#pcViewDept{
+  display:none !important;
+}
+
+
+/* Hide legacy Reset Layout button safely */
+#resetLayout,
+.reset-layout,
+button[aria-label="Reset Layout"]{
+  display:none !important;
+}
+
+
+/* HARD remove Reset Layout header button */
+#resetLayoutBtn{
+  display:none !important;
+}
+
+
+/* --- Hamburger icon as </> --- */
+#hamburgerBtn{
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif !important;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
+
+
+/* --- Remove Export Dept Layout from menu --- */
+#exportDeptLayoutBtn{ display:none !important; }
+
+
+/* --- Center text in hamburger menu buttons --- */
+.hamburger-menu button{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+
+/* --- Center text in hamburger menu labels too (Upload / Load JSON) --- */
+.hamburger-menu label{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+}
+
+
+/* === Dept Halo (SVG) === */
+#haloG circle{
+  fill: rgba(45,212,191,0.14);
+}
+
+
+/* === Dept Halo Label === */
+#haloG text{
+  fill: rgba(255,255,255,0.95);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+
+/* === Curved Dept Halo Label === */
+#haloG text{
+  fill: rgba(255,255,255,0.95);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+</style>
+
+
+
+
+<style>
+/* --- Card visual refresh --- */
+.dept-chip span{
+  color: rgb(45,212,191);
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+#personCard{
+  backdrop-filter: blur(14px);
+}
+#pcName{
+  font-size: 22px !important;
+}
+#pcTitle{
+  font-size: 14px !important;
+}
+
+/* --- Hamburger icon as </> --- */
+#hamburgerBtn{
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif !important;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
+
+
+/* --- Remove Export Dept Layout from menu --- */
+#exportDeptLayoutBtn{ display:none !important; }
+
+
+/* --- Center text in hamburger menu buttons --- */
+.hamburger-menu button{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+
+/* --- Center text in hamburger menu labels too (Upload / Load JSON) --- */
+.hamburger-menu label{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+}
+
+
+/* === Dept Halo Label === */
+#haloG text{
+  fill: rgba(255,255,255,0.95);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+
+/* === Curved Dept Halo Label === */
+#haloG text{
+  fill: rgba(255,255,255,0.95);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 300;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+</style>
+
+
+<script>
+function autoLoadLayout(mode){
+  const file = mode === "traditional" ? "layout_traditional.json" : "layout_starburst.json";
+  fetch("./" + file, { cache: "no-store" })
+    .then(r=>{ if(!r.ok) throw 0; return r.json(); })
+    .then(layout=>{
+      applyLayout(layout);
+      render();
+      centerChart();
+    })
+    .catch(()=>{});
+}
+</script>
+
+</head>
+
+<body>
+
+
+<div id="instructions" class="howto">
+  <div id="instructionsToggle" class="howto-toggle" role="button" aria-expanded="false" tabindex="0">
+    <span class="howto-icon" aria-hidden="true">!</span>
+    <span class="howto-title">HOW TO USE</span>
+  </div>
+  <div id="instructionsBody" class="howto-body" hidden>
+    <div>• Drag the background to pan the chart</div>
+    <div>• Scroll/Pinch to zoom</div>
+    <div>• Click Dept. Head to show staff</div>
+    <div>• Double-click a person for details</div>
+    <div>• Use search to jump to a person or department</div>
+  </div>
+</div>
+
+
+<header>
+  
+<img id="homeLogo" src="photos/LED_logoFULL_COLOR.svg" alt="Logo" style="height:56px;margin-right:14px;cursor:pointer;">
+<div class="header-title">ORGANIZATIONAL CHART</div>
+
+<strong></strong>
+  <span style="opacity:.7;font-size:12px"></span>
+  <div class="spacer"></div>
+<input id="searchInput" type="search" placeholder="Search people…"
+  aria-label="Search people"
+  style="
+    height:44px;
+    min-width:260px;
+    max-width:420px;
+    padding:0 12px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    outline:none;
+  " autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" inputmode="search">
+
+
+  
+  <label>Upload CSV/XLSX<input id="fileInput" type="file" accept=".csv,.xlsx,.xls"></label>
+  <button id="authorModeBtn" title="Toggle WYSIWYG authoring (drag to arrange)">Author Mode: Off</button>
+  <button id="saveDefaultLayoutBtn" disabled title="Save current positions as the default Reset Layout baseline">Save Starburst Layout</button>
+  <button id="exportDeptLayoutBtn" disabled>Export Dept Layout</button>
+
+  <label id="loadLayoutLbl" title="Load a previously-saved layout.json">Load Layout JSON<input id="layoutInput" type="file" accept=".json"></label>
+  <button id="clearDefaultLayoutBtn" title="Clear default layout and go back to starburst on Reset">Clear Default</button>
+  
+  
+  <button id="layoutToggleBtn" title="Toggle Starburst / Traditional">View in Traditional</button>
+  <button id="homeBtn">RESET</button>
+  <button id="resetLayoutBtn">Reset Layout</button>
+
+  <div class="hamburger">
+    <button id="hamburgerBtn" aria-label="Menu" title="Menu">&lt;/&gt;</button>
+    <div id="hamburgerMenu" class="hamburger-menu"></div>
+  </div>
+
+  <button id="isolateBtn" disabled style="display:none">Isolate Selected Dept</button>
+  <button id="backBtn" style="display:none" style="display:none">Back to Full Org</button>
+  <button id="resetBtn">Reset Data</button>
+</header>
+
+<div id="searchOverlay" aria-hidden="true"><div id="searchResults" role="listbox" aria-label="Search results"></div></div>
+
+<main>
+<div id="stage">
+  <div id="viewport">
+  <svg id="svg" preserveAspectRatio="none">
+    <g id="haloG"></g>
+    <g id="lines"></g>
+  </svg>
+  <div id="nodes"></div>
+  </div>
+</div>
+</main>
+
+<!-- Default layout (optional). Paste layout JSON between the tags to make it the authoritative Reset Layout baseline. -->
+<script id="defaultLayoutJson" type="application/json">null</script>
+<div id="toast"></div>
+
+
+<script>
+const svg = document.getElementById("svg");
+const linesG = document.getElementById("lines");
+const haloG = document.getElementById("haloG");
+const nodesDiv = document.getElementById("nodes");
+const fileInput = document.getElementById("fileInput");
+const resetBtn = document.getElementById("resetBtn");
+
+let DATA = demoData();
+let SEARCH_INDEX = null; // immutable snapshot for site-wide search
+
+// runtime
+const pos = new Map();           // id -> {x,y}
+const relOffset = new Map();     // child -> {dx,dy} relative to reportsTo
+const children = new Map();      // parent -> [child]
+let edges = [];                  // {from,to,kind}
+
+const VIEW = { w: window.__STAGE_W__ || 1600, h: window.__STAGE_H__ || 900 };
+const CENTER = { x: VIEW.w/2, y: VIEW.h/2 + 10 };
+
+function demoData(){
+  return [
+    {id:"susan",name:"Susan Bourgeois",title:"Secretary",leader:false,reportsTo:null,photo:"photos/susan.jpg"},
+    {id:"chris",name:"Christopher Hale",title:"CEO",leader:true,reportsTo:"susan",photo:"photos/chris.jpg"},
+    {id:"jordan",name:"Jordan Kim",title:"VP Operations",leader:true,reportsTo:"susan",photo:"photos/jordan.jpg"},
+    {id:"priya",name:"Priya Nair",title:"VP Finance",leader:true,reportsTo:"susan",photo:"photos/priya.jpg"},
+    {id:"alex",name:"Alex Rivera",title:"VP Technology",leader:true,reportsTo:"susan",photo:"photos/alex.jpg"},
+    {id:"cameron",name:"Cameron Price",title:"VP Sales",leader:true,reportsTo:"susan",photo:"photos/cameron.jpg"},
+
+    {id:"taylor",name:"Taylor Ellis",title:"Facilities Manager",leader:false,reportsTo:"jordan",photo:"photos/taylor.jpg"},
+    {id:"parker",name:"Parker Diaz",title:"Logistics Manager",leader:false,reportsTo:"jordan",photo:"photos/parker.jpg"},
+    {id:"finley",name:"Finley Carter",title:"Senior Accountant",leader:false,reportsTo:"priya",photo:"photos/finley.jpg"},
+    {id:"casey",name:"Casey Nguyen",title:"FP&A Manager",leader:false,reportsTo:"priya",photo:"photos/casey.jpg"},
+    {id:"sam",name:"Sam Chen",title:"Infrastructure Manager",leader:false,reportsTo:"alex",photo:"photos/sam.jpg"},
+    {id:"miles",name:"Jordan Miles",title:"Security Manager",leader:false,reportsTo:"alex",photo:"photos/miles.jpg"},
+    {id:"harper",name:"Harper Stone",title:"Account Executive",leader:false,reportsTo:"cameron",photo:"photos/harper.jpg"},
+    {id:"mia",name:"Mia Alvarez",title:"Sales Development Rep",leader:false,reportsTo:"cameron",photo:"photos/mia.jpg"},
+  ];
+}
+
+function initials(name){
+  const parts=(name||"").trim().split(/\s+/).filter(Boolean);
+  const a=(parts[0]||"").slice(0,1);
+  const b=(parts[1]||"").slice(0,1) || (parts[0]||"").slice(1,2);
+  return (a+b).toUpperCase() || "??";
+}
+
+function buildIndex(){
+  children.clear();
+  for(const p of DATA){
+    if(!p.reportsTo) continue;
+    if(!children.has(p.reportsTo)) children.set(p.reportsTo, []);
+    children.get(p.reportsTo).push(p.id);
+  }
+}
+
+
+// --- Selection + Header-based isolate ---
+let selectedLeaderId = null;
+const isolateBtn = document.getElementById("isolateBtn");
+const backBtn = document.getElementById("backBtn");
+let FULL_DATA = null;
+
+function clearSelection(){
+  selectedLeaderId = null;
+  isolateBtn.disabled = true;
+  document.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
+}
+
+function selectLeader(id){
+  clearSelection(); clearDeptFocus();
+  selectedLeaderId = id;
+  isolateBtn.disabled = false;
+  const el = document.querySelector(`.node[data-id="${CSS.escape(id)}"]`);
+  if(el) el.classList.add('selected');
+}
+
+function isolateSelected(){
+  if(!selectedLeaderId) return;
+  FULL_DATA = DATA.map(p=>({...p}));
+  animateIsolate(selectedLeaderId);
+
+  // build index from snapshot
+  const idx = new Map();
+  for(const p of FULL_DATA){
+    if(!p.reportsTo) continue;
+    if(!idx.has(p.reportsTo)) idx.set(p.reportsTo, []);
+    idx.get(p.reportsTo).push(p.id);
+  }
+
+  const keep = new Set([selectedLeaderId]);
+  const q = [selectedLeaderId];
+  while(q.length){
+    const cur = q.shift();
+    (idx.get(cur)||[]).forEach(k=>{
+      if(!keep.has(k)){ keep.add(k); q.push(k); }
+    });
+  }
+
+  DATA = FULL_DATA.filter(p=>keep.has(p.id)).map(p=>{
+    if(p.id===selectedLeaderId) return {...p, reportsTo:null};
+    return {...p};
+  });
+
+  backBtn.style.display="inline-block";
+  isolateBtn.disabled = true;
+  selectedLeaderId = null;
+  layoutStarburst();
+  render();
+  centerChart();
+  centerChart();
+}
+
+isolateBtn.onclick = isolateSelected;
+
+
+function animateIsolate(leaderId){
+  document.querySelectorAll('.node').forEach(n=>{
+    if(n.dataset.id!==leaderId) n.classList.add('fade-out');
+  });
+  const rootEl = document.querySelector(`.node[data-id="${CSS.escape(leaderId)}"]`);
+  if(rootEl) rootEl.classList.add('zoom-root');
+}
+
+function isolateSelectedDirect(leaderId){
+  if(!leaderId) return;
+  FULL_DATA = DATA.map(p=>({...p}));
+  animateIsolate(selectedLeaderId);
+
+  const idx = new Map();
+  for(const p of FULL_DATA){
+    if(!p.reportsTo) continue;
+    if(!idx.has(p.reportsTo)) idx.set(p.reportsTo, []);
+    idx.get(p.reportsTo).push(p.id);
+  }
+
+  const keep = new Set([leaderId]);
+  const q = [leaderId];
+  while(q.length){
+    const cur = q.shift();
+    (idx.get(cur)||[]).forEach(k=>{
+      if(!keep.has(k)){ keep.add(k); q.push(k); }
+    });
+  }
+
+  DATA = FULL_DATA.filter(p=>keep.has(p.id)).map(p=>{
+    if(p.id===leaderId) return {...p, reportsTo:null};
+    return {...p};
+  });
+
+  backBtn.style.display="inline-block";
+  layoutStarburst();
+  render();
+  centerChart();
+  centerChart();
+}
+
+
+
+backBtn.onclick = ()=>{
+  ACTIVE_DEPT_LAYOUT = null;
+  ACTIVE_DEPARTMENT = null;
+
+  if(!FULL_DATA) return;
+  DATA = FULL_DATA.map(p=>({...p}));
+  FULL_DATA = null;
+  backBtn.style.display="none";
+  clearSelection(); clearDeptFocus();
+  layoutStarburst();
+  render();
+  centerChart();
+  centerChart();
+};
+
+function rootPerson(){
+  return DATA.find(p=>!p.reportsTo) || DATA.find(p=>p.id==="susan") || DATA[0];
+}
+
+
+
+function clearDeptHaloSVG(){
+  if(haloG) haloG.innerHTML = "";
+}
+
+function drawDeptHaloSVG(leaderId, visibleSet){
+  if(!haloG || !leaderId) return;
+
+  const rootId = rootPerson().id;
+  if(leaderId === rootId){
+    clearDeptHaloSVG();
+    return;
+  }
+
+  // Collect leader + visible staff for that leader (exclude root)
+  const pts = [];
+  for(const p of DATA){
+    if(!visibleSet.has(p.id)) continue;
+    if(p.id === rootId) continue;
+    if(p.id === leaderId || p.reportsTo === leaderId){
+      const pp = pos.get(p.id);
+      if(pp) pts.push(pp);
+    }
+  }
+  if(!pts.length){
+    clearDeptHaloSVG();
+    return;
+  }
+
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  for(const {x,y} of pts){
+    minX = Math.min(minX, x); minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+  }
+
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+
+  // Padding tuned for labels; adjust as needed
+  const pad = 160;
+  const r = Math.max(maxX - minX, maxY - minY) / 2 + pad;
+
+  haloG.innerHTML = "";
+  const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  c.setAttribute("cx", cx);
+  c.setAttribute("cy", cy);
+  c.setAttribute("r", r);
+  haloG.appendChild(c);
+
+  // Department label (straight, inside top of circle)
+  const leader = DATA.find(p => p.id === leaderId);
+  if(leader && leader.department){
+    const t = document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x", cx);
+    t.setAttribute("y", cy - r - 20);
+    t.setAttribute("text-anchor","middle");
+    t.setAttribute("font-size","14");
+    t.textContent = leader.department;
+    haloG.appendChild(t);
+  }
+
+}
+
+
+
+function responsiveRadii(){
+  const w = VIEW.w;
+  const h = VIEW.h;
+  const min = Math.min(w, h);
+
+  // Hard clamp so lines ALWAYS shorten on small screens
+  if(min <= 420) return { leader: 150, staff: 95 };
+  if(min <= 600) return { leader: 190, staff: 120 };
+  if(min <= 900) return { leader: 230, staff: 145 };
+  if(min <= 1200) return { leader: 260, staff: 160 };
+  return { leader: 280, staff: 170 };
+}
+
+function layoutStarburst(){
+  pos.clear(); relOffset.clear(); edges = [];
+  buildIndex();
+
+  const root = rootPerson();
+  pos.set(root.id, {x:CENTER.x, y:CENTER.y});
+
+  const leaders = DATA.filter(p => p.reportsTo === root.id);
+  const { leader: leaderRadius, staff: staffRadius } = responsiveRadii();
+
+  leaders.forEach((p,i)=>{
+    const a = (i/Math.max(leaders.length,1))*Math.PI*2 - Math.PI/2;
+    pos.set(p.id,{x:CENTER.x+Math.cos(a)*leaderRadius, y:CENTER.y+Math.sin(a)*leaderRadius});
+    edges.push({from:root.id,to:p.id,kind:"root"});
+  });
+
+  // Staff
+  const staff = DATA.filter(p => p.reportsTo && p.reportsTo !== root.id);
+  const byLeader = new Map();
+  for(const p of staff){
+    if(!byLeader.has(p.reportsTo)) byLeader.set(p.reportsTo, []);
+    byLeader.get(p.reportsTo).push(p);
+  }
+
+
+  for(const [leaderId, list] of byLeader.entries()){
+    const lp = pos.get(leaderId);
+    if(!lp) continue;
+
+    // orient fan away from root
+    const baseAngle = Math.atan2(lp.y - CENTER.y, lp.x - CENTER.x);
+    const spread = Math.PI / 1.8;
+
+    list.forEach((p,i)=>{
+      const t = (list.length===1) ? 0.5 : (i/(list.length-1));
+      const a = baseAngle - spread/2 + t*spread;
+      const x = lp.x + Math.cos(a)*staffRadius;
+      const y = lp.y + Math.sin(a)*staffRadius;
+      pos.set(p.id,{x,y});
+      relOffset.set(p.id,{dx:x-lp.x, dy:y-lp.y});
+      edges.push({from:leaderId,to:p.id,kind:"normal"});
+    });
+  }
+}
+
+
+function refreshDeptFocusAfterRender(){
+  if(!FOCUSED_LEADER_ID) return;
+  ensureRootFocused();
+  updateFocusedLines(FOCUSED_LEADER_ID);
+}
+
+function render(){
+  // Decide which nodes are visible: root + leaders always, staff only if their leader is expanded
+  const visible = new Set();
+  const rootId = rootPerson().id;
+
+  for(const p of DATA){
+    const isRoot = !p.reportsTo;
+    const isLeader = !!p.leader && p.reportsTo === rootId;
+    const isStaff = !!p.reportsTo && !isLeader;
+
+    if(isRoot || isLeader){
+      visible.add(p.id);
+    }else if(isStaff){
+      if(expandedLeaders.has(p.reportsTo)) visible.add(p.id);
+    }
+  }
+
+  // lines (only between visible endpoints)
+  linesG.innerHTML="";
+  for(const e of edges){
+    if(!visible.has(e.from) || !visible.has(e.to)) continue;
+    const a=pos.get(e.from), b=pos.get(e.to);
+    if(!a||!b) continue;
+    const l=document.createElementNS("http://www.w3.org/2000/svg","line");
+    l.setAttribute("x1",a.x); l.setAttribute("y1",a.y);
+    l.setAttribute("x2",b.x); l.setAttribute("y2",b.y);
+    l.setAttribute("data-from", e.from);
+    l.setAttribute("data-to", e.to);
+    l.setAttribute("class","line"+(e.kind==="root"?" root":""));
+    linesG.appendChild(l);
+  }
+
+  // nodes
+  nodesDiv.innerHTML="";
+  for(const p of DATA){
+    if(!visible.has(p.id)) continue;
+
+    const ppos = pos.get(p.id);
+    if(!ppos) continue;
+
+    const d=document.createElement("div");
+    const isRoot = !p.reportsTo;
+    const isLeader = !!p.leader && p.reportsTo === rootId;
+
+    d.className="node"+(isLeader?" leader":"")+(isRoot?" root":"");
+    d.dataset.id=p.id;
+    d.style.left=ppos.x+"px";
+    d.style.top=ppos.y+"px";
+
+    const c=document.createElement("div");
+    c.className="circle";
+    if(p.photo){
+      const img=document.createElement("img");
+      img.src=p.photo; img.draggable = false;
+      img.alt=p.name;
+      img.onerror=()=>{ c.innerHTML=`<div class="initials">${initials(p.name)}</div>`; };
+      c.appendChild(img);
+    }else{
+      c.innerHTML=`<div class="initials">${initials(p.name)}</div>`;
+    }
+
+    const lab=document.createElement("div");
+    lab.className="label";
+    // small off-axis nudge to avoid label sitting exactly on cross lines
+    const root = rootPerson();
+    const rp = pos.get(root.id);
+    const dx = ppos.x - rp.x;
+    const dy = ppos.y - rp.y;
+    const nudgeY = Math.abs(dy) < 8 ? 14 : (dy>0 ? 6 : -6);
+    lab.style.transform = `translate(12px, ${nudgeY}px) translateY(-50%)`;
+    lab.innerHTML=`${(p.department && (p.leader || p.id===rootPerson().id)) ? `<div class="dept">${escapeHtml(p.department.toUpperCase())}</div>` : ``}<div class="name">${escapeHtml(p.name)}</div><div class="title">${escapeHtml(p.title||"")}</div>`;
+
+    d.appendChild(c);
+    d.appendChild(lab);
+
+    nodesDiv.appendChild(d);
+
+    // --- Click behaviors (single-click leader = toggle staff; double-click anyone = card) ---
+    let moved = false;
+
+    d.addEventListener("pointerdown", () => { moved = false; });
+    d.addEventListener("pointermove", () => { moved = true; });
+
+    // Single click: leaders toggle staff
+    
+d.addEventListener("click", (e) => {
+  if (moved) return;
+
+  // Root (Susan) behaves like focus leader but expands all
+  
+if(isRoot){
+  // ABSOLUTE RESET for Susan
+  expandedLeaders.clear();
+
+  // Force-hide all staff explicitly
+  document.querySelectorAll(".node.staff").forEach(n=>{
+    n.style.display = "none";
+  });
+
+  render();
+  centerOnNode(p.id, true);
+  applyDeptFocus(p.id);
+  ensureRootFocused();
+  updateFocusedLines(p.id);
+  return;
+}
+
+
+  if(isLeader){
+    restoreStaffVisibility();
+    expandedLeaders.clear();
+    expandedLeaders.add(p.id);
+    render();
+    centerOnNode(p.id, true);
+    applyDeptFocus(p.id);
+    ensureRootFocused();
+  updateFocusedLines(p.id);
+  }
+});
+
+
+    // Double click: open person card (anyone)
+    d.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      if (moved) return;
+      openPersonCard(p);
+    });
+
+    enableDrag(d);
+  }
+  refreshDeptFocusAfterRender();
+  try{ if(document.body.classList.contains('dept-focus') && FOCUSED_LEADER_ID){ drawDeptHaloSVG(FOCUSED_LEADER_ID, getVisibleSet()); } }catch(e){}
+}
+
+function escapeHtml(s){
+}
+
+function escapeHtml(s){
+  return String(s||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+}
+
+
+// ===============================
+// Person Card Modal (single-click anywhere on a node)
+// ===============================
+
+function openPersonCard(p){
+  if(!p) return;
+
+  const modal = document.getElementById("personModal");
+  if(!modal) return;
+
+  // Text helpers
+  const setText = (id, val) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = (val==null || val==="") ? "—" : String(val);
+  };
+
+  // Core
+  setText("pcName", p.name || "");
+  setText("pcTitle", p.title || "");
+  setText("pcDept", p.department || "—");
+
+  // Manager (in current view DATA; fallback to SEARCH_INDEX)
+  const pool = (SEARCH_INDEX && SEARCH_INDEX.length) ? SEARCH_INDEX : DATA;
+  const mgr = pool.find(x => x.id === p.reportsTo);
+  setText("pcMgr", mgr ? mgr.name : "—");
+
+  // Phone/Email
+  const phoneVal = (p.phone||"").toString().trim();
+  const emailVal = (p.email||"").toString().trim();
+
+  setText("pcPhoneText", phoneVal || "—");
+  setText("pcEmailText", emailVal || "—");
+  setText("pcPhone", phoneVal || "—");
+  setText("pcEmail", emailVal || "—");
+
+  const callA = document.getElementById("pcCall");
+  if(callA){
+    if(phoneVal){
+      callA.style.display = "inline-flex";
+      callA.href = "tel:" + phoneVal.replace(/[^0-9+]/g,"");
+    }else{
+      callA.style.display = "none";
+      callA.href = "#";
+    }
+  }
+
+  const mailA = document.getElementById("pcMail");
+  if(mailA){
+    if(emailVal){
+      mailA.style.display = "inline-flex";
+      mailA.href = "mailto:" + emailVal;
+    }else{
+      mailA.style.display = "none";
+      mailA.href = "#";
+    }
+  }
+
+  // Photo + initials fallback
+  const img = document.getElementById("pcPhoto");
+  const initialsEl = document.getElementById("pcInitials");
+  const initials = (p.name||"").trim().split(/\s+/).slice(0,2).map(s=>s[0]||"").join("").toUpperCase();
+
+  if(img && initialsEl){
+    if(p.photo){
+      img.src = p.photo;
+      img.style.display = "block";
+      initialsEl.style.display = "none";
+      img.onerror = ()=>{ img.style.display="none"; initialsEl.textContent = initials || "??"; initialsEl.style.display="block"; };
+    }else{
+      img.style.display = "none";
+      initialsEl.textContent = initials || "??";
+      initialsEl.style.display = "block";
+    }
+  }
+
+    modal.style.display = "flex";
+
+  // View Department handler (existing logic)
+    
+    const viewBtn = document.getElementById("pcViewDept");
+    if(viewBtn){
+      viewBtn.style.display = "block";
+      
+viewBtn.onclick = ()=>{
+  const root = rootPerson();
+
+  // close modal immediately
+  modal.style.display = "none";
+
+  // already in this department → no-op
+  if(ACTIVE_DEPARTMENT && ACTIVE_DEPARTMENT === p.department){
+    return;
+  }
+
+  // root goes home
+  if(root && p.id === root.id){
+    window.location.replace(window.location.pathname + "?home=" + Date.now());
+    return;
+  }
+
+  const leaderId = p.leader ? p.id : p.reportsTo;
+  if(!leaderId) return;
+
+  ACTIVE_DEPARTMENT = p.department;
+
+  isolateSelectedDirect(leaderId);
+
+  loadDeptLayout(p.department).then(layout=>{
+    ACTIVE_DEPT_LAYOUT = layout;
+    if(layout){
+      applyLayout(layout);
+    }else{
+      const baseline = getBaselineLayout && getBaselineLayout();
+      if(baseline) applyLayout(baseline);
+    }
+
+    expandedLeaders.clear();
+    DATA.forEach(x=>{ if(x.leader) expandedLeaders.add(x.id); });
+
+    render();
+    centerChart();
+  });
+};
+
+    }
+
+}
+
+// Drag: leader drags staff by stored offsets; Susan/root does NOT drag leaders.
+let drag=null;
+function enableDrag(el){
+  el.onpointerdown = (e)=>{
+    const id=el.dataset.id;
+    const p=pos.get(id);
+    if(!p) return;
+    drag={id, sx:e.clientX, sy:e.clientY, ox:p.x, oy:p.y};
+    el.setPointerCapture(e.pointerId);
+  };
+  el.onpointermove = (e)=>{
+    if(!drag || drag.id!==el.dataset.id) return;
+    const id=drag.id;
+    const p=pos.get(id);
+    p.x = drag.ox + (e.clientX-drag.sx) / zoom;
+    p.y = drag.oy + (e.clientY-drag.sy) / zoom;
+
+    // move children if dragging a leader (not root)
+    const rootId = rootPerson().id;
+    if(id !== rootId){
+      const kids = children.get(id);
+      if(kids){
+        for(const kidId of kids){
+          const off = relOffset.get(kidId);
+          const kp = pos.get(kidId);
+          if(!off || !kp) continue;
+          kp.x = p.x + off.dx;
+          kp.y = p.y + off.dy;
+        }
+      }
+    }
+
+    // if staff dragged, update offset relative to leader
+    const person = DATA.find(x=>x.id===id);
+    if(person && person.reportsTo){
+      const leaderPos = pos.get(person.reportsTo);
+      if(leaderPos){
+        relOffset.set(id, {dx: p.x - leaderPos.x, dy: p.y - leaderPos.y});
+      }
+    }
+
+    // update DOM quickly without full rebuild
+    el.style.left=p.x+"px";
+    el.style.top=p.y+"px";
+    const kids = (id===rootPerson().id) ? null : children.get(id);
+    if(kids){
+      for(const kidId of kids){
+        const kidEl = nodesDiv.querySelector(`.node[data-id="${CSS.escape(kidId)}"]`);
+        const kp = pos.get(kidId);
+        if(kidEl && kp){
+          kidEl.style.left=kp.x+"px";
+          kidEl.style.top=kp.y+"px";
+        }
+      }
+    }
+    // redraw lines only
+    renderLinesOnly();
+  };
+  el.onpointerup = ()=> drag=null;
+  el.onpointercancel = ()=> drag=null;
+}
+
+
+function getVisibleSet(){
+  const visible = new Set();
+  const rootId = rootPerson().id;
+  for(const p of DATA){
+    const isRoot = !p.reportsTo;
+    const isLeader = !!p.leader && p.reportsTo === rootId;
+    const isStaff = !!p.reportsTo && !isLeader;
+    if(isRoot || isLeader){
+      visible.add(p.id);
+    }else if(isStaff && expandedLeaders.has(p.reportsTo)){
+      visible.add(p.id);
+    }
+  }
+  return visible;
+}
+
+function renderLinesOnly(){
+  const visible = getVisibleSet();
+  linesG.innerHTML="";
+  for(const e of edges){
+    if(!visible.has(e.from) || !visible.has(e.to)) continue;
+    const a = pos.get(e.from), b = pos.get(e.to);
+    if(!a || !b) continue;
+    const l = document.createElementNS("http://www.w3.org/2000/svg","line");
+    l.setAttribute("x1", a.x); l.setAttribute("y1", a.y);
+    l.setAttribute("x2", b.x); l.setAttribute("y2", b.y);
+    l.setAttribute("data-from", e.from);
+    l.setAttribute("data-to", e.to);
+    l.setAttribute("class", "line" + (e.kind === "root" ? " root" : ""));
+    linesG.appendChild(l);
+  }
+}
+
+// Upload
+function normalizeRows(rows){
+  return rows.map(r=>{
+    const o={};
+    for(const k in r) o[String(k).trim().toLowerCase()] = r[k];
+    const id=String(o.id||"").trim();
+    const name=String(o.name||"").trim();
+    const title=String(o.title||"").trim();
+    const department=String(o.department||"").trim();
+    const leader=String(o.leader||"").trim().toLowerCase()==="true";
+    const reportsTo=String(o.reportsto||"").trim();
+    const photo=String(o.photo||"").trim();
+    const phone=String(o.phone||"").trim();
+    const email=String(o.email||"").trim();
+    return {id,name,title,leader,department,phone,email,reportsTo:reportsTo||null,photo};
+  }).filter(p=>p.id && p.name);
+}
+
+async function parseFile(file){
+  const n=file.name.toLowerCase();
+  if(n.endsWith(".csv")){
+    return new Promise((resolve,reject)=>{
+      Papa.parse(file,{header:true,skipEmptyLines:true,complete:r=>resolve(r.data||[]),error:reject});
+    });
+  }
+  if(n.endsWith(".xlsx")||n.endsWith(".xls")){
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf,{type:"array"});
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(sheet,{defval:""});
+  }
+  throw new Error("Unsupported file type");
+}
+
+fileInput.onchange = async ()=>{
+  const f=fileInput.files && fileInput.files[0];
+  if(!f) return;
+  try{
+    const raw = await parseFile(f);
+    DATA = normalizeRows(raw);
+    localStorage.setItem('orgchartData', JSON.stringify(DATA));
+    layoutStarburst();
+    render();
+  }catch(err){
+    console.error(err);
+    alert("Upload failed. Need headers: id,name,title,leader,reportsTo,photo");
+  }finally{
+    fileInput.value="";
+  }
+};
+
+
+const resetLayoutBtn = document.getElementById("resetLayoutBtn");
+const authorModeBtn = document.getElementById("authorModeBtn");
+const saveDefaultLayoutBtn = document.getElementById("saveDefaultLayoutBtn");
+const clearDefaultLayoutBtn = document.getElementById("clearDefaultLayoutBtn");
+const layoutInput = document.getElementById("layoutInput");
+const toastEl = document.getElementById("toast");
+
+let AUTHOR_MODE = false;
+let expandedLeaders = new Set(); // leaderId -> expanded staff
+
+// Default layout baseline comes from the embedded JSON tag (server-authoritative when you hardcode it)
+let DEFAULT_LAYOUT = null;
+(function(){
+  try{
+    const tag = document.getElementById("defaultLayoutJson");
+    if(tag){
+      const raw = (tag.textContent||"").trim();
+      DEFAULT_LAYOUT = raw ? JSON.parse(raw) : null;
+    }
+  }catch(e){ DEFAULT_LAYOUT = null; }
+})();
+
+// Runtime baseline set by "Save Default Layout" (does NOT persist unless you paste/export JSON)
+let SAVED_DEFAULT_LAYOUT = null;
+
+function toast(msg){
+  if(!toastEl) return;
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastEl.__t);
+  toastEl.__t = setTimeout(()=>toastEl.classList.remove("show"), 1400);
+}
+
+function getBaselineLayout(){
+  return SAVED_DEFAULT_LAYOUT || DEFAULT_LAYOUT;
+}
+
+
+let ACTIVE_DEPT_LAYOUT = null;
+let ACTIVE_DEPARTMENT = null;
+
+function deptKey(name){
+  return (name||"").toLowerCase().replace(/[^a-z0-9]+/g,"_");
+}
+
+async function loadDeptLayout(dept){
+  if(!dept) return null;
+  const path = `./layout_${deptKey(dept)}.json`;
+  try{
+    const r = await fetch(path,{cache:"no-store"});
+    if(!r.ok) throw 0;
+    return await r.json();
+  }catch(e){
+    return null;
+  }
+}
+
+// Snapshot current layout into {nodes, rel}
+function snapshotLayout(){
+  const out = { nodes:{}, rel:{} };
+  for(const [id,p] of pos.entries()){
+    out.nodes[id] = { x: p.x, y: p.y };
+  }
+  for(const [id,off] of relOffset.entries()){
+    out.rel[id] = { dx: off.dx, dy: off.dy };
+  }
+  return out;
+}
+
+// Apply a layout snapshot to current DATA
+function applyLayout(layout){
+  if(!layout || !layout.nodes) return false;
+
+  pos.clear();
+  relOffset.clear();
+  edges = [];
+  buildIndex();
+
+  // Apply node positions (only for ids that exist in DATA)
+  const validIds = new Set(DATA.map(p=>p.id));
+  for(const id in layout.nodes){
+    if(!validIds.has(id)) continue;
+    const p = layout.nodes[id];
+    if(!p || typeof p.x!=="number" || typeof p.y!=="number") continue;
+    pos.set(id, {x:p.x, y:p.y});
+  }
+
+  // Fill any missing ids (so render doesn't drop nodes)
+  for(const p of DATA){
+    if(!pos.has(p.id)){
+      // fallback to starburst positions for that node
+      // (safe: compute once and copy its value)
+      const tmp = new Map(pos);
+      layoutStarburst();
+      const sp = pos.get(p.id);
+      pos.clear();
+      for(const [k,v] of tmp.entries()) pos.set(k,v);
+      if(sp) pos.set(p.id, {x:sp.x, y:sp.y});
+    }
+  }
+
+  // Apply rel offsets (optional)
+  if(layout.rel){
+    for(const id in layout.rel){
+      const off = layout.rel[id];
+      if(!off || typeof off.dx!=="number" || typeof off.dy!=="number") continue;
+      relOffset.set(id, {dx: off.dx, dy: off.dy});
+    }
+  }
+
+  // Rebuild edges from current DATA
+  const rootId = rootPerson().id;
+  for(const p of DATA){
+    if(!p.reportsTo) continue;
+    edges.push({from:p.reportsTo,to:p.id,kind:(p.reportsTo===rootId?"root":"normal")});
+  }
+  return true;
+}
+
+// Download a JSON file
+function downloadJSON(filename, obj){
+  const blob = new Blob([JSON.stringify(obj,null,2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+
+// Wire buttons
+authorModeBtn && (authorModeBtn.onclick = ()=>{
+  AUTHOR_MODE = !AUTHOR_MODE;
+  authorModeBtn.textContent = AUTHOR_MODE ? "Author Mode: On" : "Author Mode: Off";
+  saveDefaultLayoutBtn.disabled = !AUTHOR_MODE;
+  toast(AUTHOR_MODE ? "Author Mode ON" : "Author Mode OFF");
+});
+
+
+const exportDeptLayoutBtn = document.getElementById("exportDeptLayoutBtn");
+
+
+function currentDept(){
+  return ACTIVE_DEPARTMENT;
+}
+
+
+authorModeBtn && authorModeBtn.addEventListener("click", ()=>{
+  if(exportDeptLayoutBtn){
+    exportDeptLayoutBtn.disabled = !AUTHOR_MODE;
+  }
+});
+
+exportDeptLayoutBtn && (exportDeptLayoutBtn.onclick = ()=>{
+  if(!AUTHOR_MODE) return;
+  const dept = currentDept();
+  if(!dept){
+    toast("No department context");
+    return;
+  }
+  const snap = snapshotLayout();
+  const key = dept.toLowerCase().replace(/[^a-z0-9]+/g,"_");
+  downloadJSON(`layout_${key}.json`, snap);
+  toast(`Exported ${dept} layout`);
+});
+
+
+saveDefaultLayoutBtn && (saveDefaultLayoutBtn.onclick = ()=>{
+  const snap = snapshotLayout();
+  SAVED_DEFAULT_LAYOUT = snap;
+  downloadJSON("layout_starburst.json", snap);
+  toast("Saved + downloaded layout.json");
+});
+
+clearDefaultLayoutBtn && (clearDefaultLayoutBtn.onclick = ()=>{
+  SAVED_DEFAULT_LAYOUT = null;
+  DEFAULT_LAYOUT = null;
+  const tag = document.getElementById("defaultLayoutJson");
+  if(tag) tag.textContent = "null";
+  toast("Default layout cleared");
+});
+
+// Load layout.json
+layoutInput && (layoutInput.onchange = async ()=>{
+  const f = layoutInput.files && layoutInput.files[0];
+  if(!f) return;
+  try{
+    const text = await f.text();
+    const obj = JSON.parse(text);
+    SAVED_DEFAULT_LAYOUT = obj;
+    const ok = applyLayout(getBaselineLayout());
+    if(ok){
+      render();
+      centerChart();
+      toast("Layout loaded");
+    }else{
+      toast("Layout invalid");
+    }
+  }catch(e){
+    console.error(e);
+    toast("Layout load failed");
+  }finally{
+    layoutInput.value = "";
+  }
+});
+
+
+resetLayoutBtn.onclick = ()=>{
+  // reset pan
+  panX = 0; panY = 0;
+  zoom = 1;
+  applyTransform();
+
+  // reset layout: prefer saved/embedded baseline, else starburst
+  
+  const baseline = ACTIVE_DEPT_LAYOUT || getBaselineLayout();
+
+  if(baseline && applyLayout(baseline)){
+    // applied baseline
+  }else{
+    layoutStarburst();
+  }
+
+  render();
+  centerChart();
+  centerChart();
+};
+
+resetBtn.onclick = ()=>{
+  localStorage.removeItem('orgchartData');
+  DATA = demoData();
+  layoutStarburst();
+  render();
+  centerChart();
+  centerChart();
+};
+
+
+
+// CONFIG: path to hosted CSV (relative to site root)
+const HOSTED_CSV_PATH = "./orgchart.csv";
+const HOSTED_LAYOUT_PATH = "./layout.json";
+
+// Auto-load hosted CSV on page load (authoritative)
+
+function loadHostedLayout(){
+  return fetch(HOSTED_LAYOUT_PATH, { cache: "no-store" })
+    .then(r => { if(!r.ok) throw new Error("no layout"); return r.json(); })
+    .then(j => {
+      DEFAULT_LAYOUT = j;
+      toast("Default layout loaded");
+    })
+    .catch(()=>{});
+}
+
+function loadHostedCSV(){
+  fetch(HOSTED_CSV_PATH, { cache: "no-store" })
+    .then(res => {
+      if(!res.ok) throw new Error("no csv");
+      return res.text();
+    })
+    .then(text => {
+      Papa.parse(text, {
+        header:true,
+        skipEmptyLines:true,
+        complete: r => {
+          const rows = normalizeRows(r.data||[]);
+          if(rows.length){
+            DATA = rows;
+            if(!SEARCH_INDEX) SEARCH_INDEX = rows.map(x=>({...x}));
+            localStorage.setItem("orgchartData", JSON.stringify(DATA));
+            layoutStarburst();
+            autoLoadLayout('starburst');
+            render();
+            centerChart();
+            if(!SEARCH_INDEX) SEARCH_INDEX = DATA.map(x=>({...x}));
+            // Apply embedded/saved default layout baseline if present
+            
+  const baseline = ACTIVE_DEPT_LAYOUT || getBaselineLayout();
+
+            if(baseline && applyLayout(baseline)){
+              render();
+              centerChart();
+            }
+
+          }
+        }
+      });
+    })
+    .catch(()=> {
+      // fallback to localStorage or demo
+      const saved = localStorage.getItem("orgchartData");
+      if(saved){
+        try { DATA = JSON.parse(saved); } catch(e){}
+      }
+      layoutStarburst();
+      render();
+      centerChart();
+      if(!SEARCH_INDEX) SEARCH_INDEX = DATA.map(x=>({...x}));
+            // Apply embedded/saved default layout baseline if present
+            
+  const baseline = ACTIVE_DEPT_LAYOUT || getBaselineLayout();
+
+            if(baseline && applyLayout(baseline)){
+              render();
+              centerChart();
+            }
+
+    });
+}
+
+// Restore last-loaded CSV data if available
+
+
+// --- Canvas panning: drag empty background to move entire artboard ---
+const stageEl = document.getElementById("stage");
+const viewportEl = document.getElementById("viewport");
+let panState = null;
+let panX = 0, panY = 0;
+let zoom = 1;
+
+
+function applyTransform(){
+  viewportEl.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+
+  viewportEl.classList.remove("zoom-low","zoom-mid","zoom-high","zoom-full");
+  if(zoom < 0.8){
+    viewportEl.classList.add("zoom-low");
+  }else if(zoom < 1.2){
+    viewportEl.classList.add("zoom-mid");
+  }else if(zoom < 1.8){
+    viewportEl.classList.add("zoom-high");
+  }else{
+    viewportEl.classList.add("zoom-full");
+  }
+}
+
+
+
+
+let FOCUSED_LEADER_ID = null;
+
+
+// Ensure staff reappear when a leader is clicked
+function restoreStaffVisibility(){
+  document.querySelectorAll(".node.staff").forEach(n=>{
+    n.style.display = "";
+  });
+}
+
+function applyDeptFocus(leaderId){
+  FOCUSED_LEADER_ID = leaderId;
+  document.body.classList.add("dept-focus");
+
+  document.querySelectorAll(".node").forEach(n=>{
+    n.classList.remove("focused");
+  });
+
+  // leader
+  const leaderEl = document.querySelector(`.node[data-id="${CSS.escape(leaderId)}"]`);
+  if(leaderEl) leaderEl.classList.add("focused");
+
+  // staff
+  DATA.forEach(p=>{
+    if(p.reportsTo === leaderId){
+      const el = document.querySelector(`.node[data-id="${CSS.escape(p.id)}"]`);
+      if(el) el.classList.add("focused");
+    }
+  });
+  updateFocusedLines(leaderId);
+  try{ drawDeptHaloSVG(leaderId, getVisibleSet()); }catch(e){}
+}
+
+
+function ensureRootFocused(){
+  const root = document.querySelector(".node.root");
+  if(root) root.classList.add("focused");
+}
+
+
+function updateFocusedLines(leaderId){
+  document.querySelectorAll(".line").forEach(l=>l.classList.remove("focused-line"));
+
+  // Always keep root-to-leader line visible
+  const root = rootPerson();
+  if(root){
+    document.querySelectorAll(`.line[data-from="${root.id}"][data-to="${leaderId}"]`)
+      .forEach(l=>l.classList.add("focused-line"));
+  }
+
+  // Leader to staff lines
+  document.querySelectorAll(`.line[data-from="${leaderId}"]`)
+    .forEach(l=>l.classList.add("focused-line"));
+}
+
+function clearDeptFocus(){
+  clearDeptHaloSVG();
+  FOCUSED_LEADER_ID = null;
+  document.body.classList.remove("dept-focus");
+  document.querySelectorAll(".node.focused").forEach(n=>n.classList.remove("focused"));
+}
+
+function centerOnNode(id, animate=true){
+  const p = pos.get(id);
+  if(!p) return;
+
+  const rect = stageEl.getBoundingClientRect();
+  const screenCX = rect.width / 2;
+  const screenCY = rect.height / 2;
+
+  const targetX = screenCX - p.x * zoom;
+  const targetY = screenCY - p.y * zoom;
+
+  if(animate){
+    viewportEl.style.transition = "transform 420ms cubic-bezier(.2,.8,.2,1)";
+  }
+
+  panX = targetX;
+  panY = targetY;
+  applyTransform();
+
+  if(animate){
+    setTimeout(()=>viewportEl.style.transition="", 450);
+  }
+}
+
+// Center the current chart geometry in the viewport (no scaling change)
+function centerChart(){
+  if(!pos.size) return;
+
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  for(const {x,y} of pos.values()){
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+  const chartCX = (minX + maxX) / 2;
+  const chartCY = (minY + maxY) / 2;
+
+  const rect = stageEl.getBoundingClientRect();
+  const screenCX = rect.width / 2;
+  const screenCY = rect.height / 2;
+
+  panX = screenCX - chartCX * zoom;
+  panY = screenCY - chartCY * zoom;
+  applyTransform();
+}
+
+
+
+stageEl.addEventListener("pointerdown", (e) => {
+  clearSelection(); clearDeptFocus();
+
+  // If clicking empty background (not a node), collapse all staff
+  if (!(e.target.closest && e.target.closest(".node"))) {
+    expandedLeaders.clear();
+    render();
+  }
+
+  // Don't pan if starting drag on a node
+  if (e.target.closest && e.target.closest(".node")) return;
+
+  panState = { sx: e.clientX, sy: e.clientY, ox: panX, oy: panY };
+  stageEl.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+
+stageEl.addEventListener("pointermove", (e) => {
+  if (!panState) return;
+  panX = panState.ox + (e.clientX - panState.sx);
+  panY = panState.oy + (e.clientY - panState.sy);
+  applyTransform();
+  e.preventDefault();
+});
+
+stageEl.addEventListener("pointerup", (e) => {
+  panState = null;
+  try { stageEl.releasePointerCapture(e.pointerId); } catch {}
+});
+stageEl.addEventListener("pointercancel", (e) => {
+  panState = null;
+  try { stageEl.releasePointerCapture(e.pointerId); } catch {}
+});
+
+
+
+// --- Desktop zoom: Ctrl / Cmd + wheel ---
+
+
+
+stageEl.addEventListener("wheel", (e) => {
+  e.preventDefault();
+
+  // Cursor position relative to stage (screen space)
+  const rect = stageEl.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  // Smooth zoom factor (works well for both mouse + trackpad)
+  const ZOOM_SENSITIVITY = 0.0016; // increase for faster zoom
+  const scaleFactor = Math.exp(-e.deltaY * ZOOM_SENSITIVITY);
+
+  const minZoom = 0.4;
+  const maxZoom = 3.0;
+
+  const prevZoom = zoom;
+  const nextZoom = Math.min(maxZoom, Math.max(minZoom, prevZoom * scaleFactor));
+  if(nextZoom === prevZoom) return;
+
+  // World point under cursor BEFORE zoom (since transform-origin is 0 0)
+  const wx = (mx - panX) / prevZoom;
+  const wy = (my - panY) / prevZoom;
+
+  zoom = nextZoom;
+
+  // Adjust pan so the same world point stays under cursor AFTER zoom
+  panX = mx - wx * zoom;
+  panY = my - wy * zoom;
+
+  applyTransform();
+}, { passive:false });
+
+
+
+
+
+
+// --- Mobile pinch zoom only (touch devices) ---
+let pinchStartDist = null;
+let pinchStartZoom = 1;
+
+stageEl.addEventListener("touchstart", (e) => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    pinchStartDist = Math.hypot(dx, dy);
+    pinchStartZoom = zoom;
+    e.preventDefault();
+  }
+}, { passive:false });
+
+stageEl.addEventListener("touchmove", (e) => {
+  if (e.touches.length === 2 && pinchStartDist) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.hypot(dx, dy);
+    zoom = Math.min(2.5, Math.max(0.5, pinchStartZoom * (dist / pinchStartDist)));
+    applyTransform();
+    e.preventDefault();
+  }
+}, { passive:false });
+
+stageEl.addEventListener("touchend", () => {
+  pinchStartDist = null;
+});
+
+
+// --- Responsive relayout on resize (shortens lines on smaller screens) ---
+window.addEventListener("resize", ()=>{
+  // If a default layout baseline exists, keep node geometry stable; just re-center.
+  if(getBaselineLayout()){
+    centerChart();
+    return;
+  }
+  VIEW.w = window.__STAGE_W__ || VIEW.w;
+  VIEW.h = window.__STAGE_H__ || VIEW.h;
+  CENTER.x = VIEW.w / 2;
+  CENTER.y = VIEW.h / 2 + 10;
+  layoutStarburst();
+  render();
+  centerChart();
+  centerChart();
+});
+// init
+
+// ===============================
+// Header Search (site-wide, stable; live picker)
+// ===============================
+const searchInput = document.getElementById("searchInput");
+const searchOverlay = document.getElementById("searchOverlay");
+const searchResults = document.getElementById("searchResults");
+
+let activeIndex = -1;
+
+function normalizeStr(s){ return (s||"").toString().toLowerCase(); }
+
+function findMatches(query){
+  const q = normalizeStr(query);
+  if(!q) return [];
+  const pool = SEARCH_INDEX || DATA || [];
+  return pool.filter(p=>{
+    const hay = [p.name, p.title, p.department].map(normalizeStr).join(" ");
+    return hay.includes(q);
+  });
+}
+
+function rankMatches(query, matches){
+  const q = normalizeStr(query);
+  return matches.slice().sort((a,b)=>{
+    const an = normalizeStr(a.name), bn = normalizeStr(b.name);
+    const aStarts = an.startsWith(q) ? 0 : 1;
+    const bStarts = bn.startsWith(q) ? 0 : 1;
+    if(aStarts !== bStarts) return aStarts - bStarts;
+    // leaders first
+    const al = a.leader ? 0 : 1;
+    const bl = b.leader ? 0 : 1;
+    if(al !== bl) return al - bl;
+    return an.localeCompare(bn);
+  });
+}
+
+function positionPicker(){
+  if(!searchInput || !searchResults) return;
+  const r = searchInput.getBoundingClientRect();
+  searchResults.style.left = `${Math.max(16, r.left)}px`;
+  searchResults.style.top  = `${r.bottom + 8}px`;
+  searchResults.style.width = `${Math.min(420, Math.max(260, r.width))}px`;
+}
+
+function getItems(){ return [...(searchResults ? searchResults.querySelectorAll(".search-item") : [])]; }
+function setActive(items){
+  items.forEach((el,i)=>el.classList.toggle("active", i===activeIndex));
+}
+function commitActive(){
+  const items = getItems();
+  if(!items.length) return;
+  const el = items[activeIndex >= 0 ? activeIndex : 0];
+  if(!el) return;
+  const p = (SEARCH_INDEX||DATA).find(x=>x.id===el.dataset.id);
+  closePicker();
+  searchSelectPerson(p);
+}
+
+function closePicker(){
+  if(searchOverlay) searchOverlay.classList.remove("open");
+  if(searchResults) searchResults.innerHTML = "";
+  if(searchOverlay) searchOverlay.setAttribute("aria-hidden","true");
+  activeIndex = -1;
+}
+
+function openPicker(query, matches){
+  if(!searchOverlay || !searchResults) return;
+  const list = rankMatches(query, matches).slice(0,6);
+  activeIndex = -1;
+
+  searchResults.innerHTML = list.map(p=>{
+    const meta = [p.title, p.department].filter(Boolean).join(" — ");
+    return `<div class="search-item" role="option" data-id="${p.id}">
+      <strong>${escapeHtml(p.name)}</strong>
+      ${meta ? `<div class="meta">${escapeHtml(meta)}</div>` : ``}
+    </div>`;
+  }).join("");
+
+  const items = getItems();
+  items.forEach((item,i)=>{
+    item.addEventListener("mouseenter", ()=>{ activeIndex = i; setActive(items); });
+
+    item.addEventListener("click", ()=>{
+      const p = (SEARCH_INDEX||DATA).find(x=>x.id===item.dataset.id);
+      closePicker();
+      searchSelectPerson(p);
+    });
+  });
+
+  positionPicker();
+  searchOverlay.classList.add("open");
+  searchOverlay.setAttribute("aria-hidden","false");
+}
+
+
+function ensureFullOrgForNavigation(){
+  // If we're in a department-only view, DATA has been filtered.
+  // Restore full org from SEARCH_INDEX (immutable snapshot) before navigating.
+  if(SEARCH_INDEX && Array.isArray(SEARCH_INDEX) && SEARCH_INDEX.length){
+    // Restore full dataset
+    DATA = SEARCH_INDEX.map(x=>({...x}));
+  }
+  // Clear department-only state
+  if(typeof FULL_DATA !== "undefined") FULL_DATA = null;
+  if(typeof backBtn !== "undefined" && backBtn) backBtn.style.display = "none";
+  if(typeof clearSelection === "function") clearSelection(); clearDeptFocus();
+
+  expandedLeaders.clear();
+  layoutStarburst();
+  render();
+  centerChart();
+  centerChart();
+}
+
+
+function navigateToPerson(p){
+  if(!p) return;
+
+  const root = rootPerson();
+  // If searching/selecting root (Susan Bourgeois), behave exactly like Home
+  if(root && p.id === root.id){
+    window.location.replace(window.location.pathname + "?home=" + Date.now());
+    return;
+  }
+
+  // Always reset to full org before switching departments
+  ensureFullOrgForNavigation();
+
+  const leaderId = p.leader ? p.id : p.reportsTo;
+  if(!leaderId) return;
+
+  isolateSelectedDirect(leaderId);
+
+        // Re-apply baseline layout so department view matches main layout geometry
+        const baseline = getBaselineLayout && getBaselineLayout();
+        if(baseline){
+          applyLayout(baseline);
+        }
+
+  expandedLeaders.add(leaderId);
+  render();
+  centerChart();
+
+  requestAnimationFrame(()=>{
+    document.querySelectorAll(".node").forEach(n=>n.classList.remove("selected"));
+    const el = document.querySelector(`.node[data-id="${CSS.escape(p.id)}"]`);
+    if(el) el.classList.add("selected");
+  });
+}
+
+
+
+function searchSelectPerson(p){
+  if(!p) return;
+
+  // Ensure staff nodes can appear if we were in Susan-only mode
+  if(typeof restoreStaffVisibility === "function") restoreStaffVisibility();
+
+  // Determine leader context for focus:
+  // - root (Susan): no staff expansion
+  // - leader: expand that leader
+  // - staff: expand their reportsTo (leader)
+  const root = rootPerson();
+  const isRoot = root && p.id === root.id;
+  const leaderId = (p.leader ? p.id : (p.reportsTo || null)) || p.id;
+
+  // Expand department like clicking leader (except root)
+  expandedLeaders.clear();
+  if(!isRoot){
+    expandedLeaders.add(leaderId);
+  }
+
+  render();
+
+  // Center on the person and apply focus styling
+  centerOnNode(p.id, true);
+  applyDeptFocus(isRoot ? root.id : leaderId);
+  ensureRootFocused();
+  updateFocusedLines(isRoot ? root.id : leaderId);
+
+  // Highlight selected person (use existing .selected ring)
+  document.querySelectorAll(".node.selected").forEach(n=>n.classList.remove("selected"));
+  const nodeEl = document.querySelector(`.node[data-id="${CSS.escape(p.id)}"]`);
+  if(nodeEl) nodeEl.classList.add("selected");
+
+  // Open the person card
+  openPersonCard(p);
+}
+
+let searchTimer = null;
+
+if(searchInput){
+  searchInput.addEventListener("input", ()=>{
+    clearTimeout(searchTimer);
+    const q = searchInput.value.trim();
+    if(!q){ closePicker(); return; }
+    searchTimer = setTimeout(()=>{
+      const matches = findMatches(q);
+      if(matches.length){ openPicker(q, matches); }
+      else closePicker();
+    }, 120);
+  });
+
+  
+  searchInput.addEventListener("keydown", (e)=>{
+    const items = getItems();
+
+    if(e.key === "ArrowDown" && items.length){
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % items.length;
+      setActive(items);
+      return;
+    }
+    if(e.key === "ArrowUp" && items.length){
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + items.length) % items.length;
+      setActive(items);
+      return;
+    }
+
+    if(e.key === "Enter"){
+      e.preventDefault();
+      // If picker is open and has items, commit active/first
+      if(items.length){
+        commitActive();
+        return;
+      }
+      // Otherwise: run first match (original behavior)
+      const q = searchInput.value.trim();
+      if(!q) return;
+      const matches = rankMatches(q, findMatches(q));
+      if(matches.length){
+        searchSelectPerson(matches[0]);
+      }
+      return;
+    }
+
+    if(e.key === "Escape"){
+      closePicker();
+      return;
+    }
+  });
+
+  window.addEventListener("resize", ()=>{
+    if(searchOverlay && searchOverlay.classList.contains("open")) positionPicker();
+  });
+}
+
+if(searchOverlay){
+  searchOverlay.addEventListener("click", (e)=>{
+    if(e.target === searchOverlay) closePicker();
+  });
+}
+
+
+loadHostedLayout().finally(()=>{
+  loadHostedCSV();
+});
+</script>
+
+
+
+
+
+<!-- Person Card Modal -->
+<div id="personModal" style="display:none;position:fixed;inset:0;z-index:5000;
+     background:rgba(5,10,20,.55);backdrop-filter:blur(6px);
+     align-items:center;justify-content:center;">
+  <div id="personCard" style="
+      position:relative;
+      width:420px;max-width:94vw;
+      border-radius:20px;
+      border:1px solid rgba(255,255,255,.18);
+      background:linear-gradient(180deg,#0f172a,#0b1220);
+      box-shadow:0 30px 80px rgba(0,0,0,.70);
+      padding:18px;">
+    <button id="personClose" aria-label="Close"
+      style="
+        position:absolute;
+        top:8px;
+        right:8px;
+        width:44px;
+        height:44px;
+        border:none;
+        border-radius:12px;
+        background:transparent;
+        cursor:pointer;
+        z-index:9999;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+      ">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" style="pointer-events:none;">
+        <path d="M18 6L6 18M6 6l12 12"
+              stroke="rgba(255,255,255,.9)"
+              stroke-width="2.5"
+              stroke-linecap="round"/>
+      </svg>
+    </button>
+
+    <div class="pc-wrap">
+      <div class="pc-left">
+        <div class="pc-avatar">
+          <img id="pcPhoto" style="width:100%;height:100%;object-fit:cover;display:none;">
+          <div id="pcInitials" class="pc-initials" style="display:none;">AB</div>
+        </div>
+      </div>
+
+      <div class="pc-right">
+        <div id="pcName"></div>
+        <div id="pcTitle"></div>
+
+        <div class="pc-badges">
+          <div class="pc-chip dept-chip"><strong>DEPT</strong> <span id="pcDept"></span></div>
+          <div class="pc-chip"><strong>REPORTS TO</strong> <span id="pcMgr"></span></div>
+        </div>
+
+        <div class="pc-actions">
+          <a id="pcCall" class="pc-action" href="#" style="display:none;">📞 <span class="muted" id="pcPhone"></span></a>
+          <a id="pcMail" class="pc-action" href="#" style="display:none;">✉️ <span class="muted" id="pcEmail"></span></a>
+        </div>
+
+        <!-- removed duplicate phone/email grid -->
+<div class="pc-grid" style="display:none">
+          <div class="pc-row">
+            <div class="k">Phone</div>
+            <div class="v" id="pcPhoneText">—</div>
+          </div>
+          <div class="pc-row">
+            <div class="k">Email</div>
+            <div class="v" id="pcEmailText">—</div>
+          </div>
+        </div>
+
+        <button id="pcViewDept">View Department</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Person card modal close behaviors
+
+(function(){
+  const modal = document.getElementById("personModal");
+  const closeBtn = document.getElementById("personClose");
+  if(!modal || !closeBtn) return;
+
+  function close(){ modal.style.display = "none"; }
+
+  closeBtn.addEventListener("click", close);
+  modal.addEventListener("click", (e)=>{ if(e.target === modal) close(); });
+  document.addEventListener("keydown", (e)=>{ if(e.key === "Escape") close(); });
+})();
+</script>
+
+
+<script>
+(function(){
+  const menu = document.getElementById("hamburgerMenu");
+  const toggle = document.getElementById("hamburgerBtn");
+  const header = document.querySelector("header");
+  if(!menu || !toggle || !header) return;
+
+  // Move everything in header except: logo img, spacer, resetLayoutBtn, hamburger container
+  const keepIds = new Set(["resetLayoutBtn","homeBtn","layoutToggleBtn","hamburgerBtn","hamburgerMenu","searchInput"]);
+  const keepClasses = new Set(["spacer","hamburger"]);
+
+  const toMove = [];
+  Array.from(header.children).forEach(el=>{
+    // keep logo img
+    if(el.tagName === "IMG") return;
+    // keep spacer
+    if(el.classList && keepClasses.has("spacer") && el.classList.contains("spacer")) return;
+    // keep hamburger container
+    if(el.classList && el.classList.contains("hamburger")) return;
+    // keep reset layout
+    if(el.id && keepIds.has(el.id)) return;
+
+    // Move labels/buttons (and any leftover strong/span empty placeholders)
+    if(el.tagName === "BUTTON" || el.tagName === "LABEL" || el.tagName === "STRONG" || el.tagName === "SPAN"){
+      // skip empty strong/span placeholders
+      const txt = (el.textContent||"").trim();
+      if((el.tagName === "STRONG" || el.tagName === "SPAN") && txt === ""){ el.remove(); return; }
+      toMove.push(el);
+    }
+  });
+
+  toMove.forEach(el=> menu.appendChild(el));
+
+  // Toggle open/close
+  toggle.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    menu.classList.toggle("open");
+  });
+
+  // Close on outside click
+  document.addEventListener("click", (e)=>{
+    if(!menu.classList.contains("open")) return;
+    if(menu.contains(e.target) || e.target === toggle) return;
+    menu.classList.remove("open");
+  });
+
+  // Close on Escape
+  document.addEventListener("keydown", (e)=>{
+    if(e.key === "Escape") menu.classList.remove("open");
+  });
+})();
+</script>
+
+
+<script>
+const homeBtn = document.getElementById("homeBtn");
+if(homeBtn){
+  homeBtn.onclick = () => {
+    // Full page reload so hosted CSV + layout.json reapply cleanly
+    window.location.replace(window.location.pathname + "?home=" + Date.now());
+  };
+}
+</script>
+
+
+<script>
+// Logo acts as Home (full reload, cache-busted)
+(function(){
+  const logo = document.getElementById("homeLogo");
+  if(!logo) return;
+  logo.addEventListener("click", ()=>{
+    window.location.replace(window.location.pathname + "?home=" + Date.now());
+  });
+})();
+</script>
+
+
+<script>
+// ===============================
+// Proximity glow (no movement)
+// ===============================
+(function(){
+  const stage = document.getElementById("stage");
+  if(!stage) return;
+
+  const RADIUS = 60; // px distance for glow
+
+  stage.addEventListener("mousemove", (e)=>{
+    const mx = e.clientX;
+    const my = e.clientY;
+
+    document.querySelectorAll(".node").forEach(node=>{
+      const circle = node.querySelector(".circle");
+      if(!circle) return;
+
+      const r = circle.getBoundingClientRect();
+      const cx = r.left + r.width/2;
+      const cy = r.top + r.height/2;
+      const d = Math.hypot(cx - mx, cy - my);
+
+      if(d < RADIUS){
+        circle.classList.add("glow");
+      }else{
+        circle.classList.remove("glow");
+      }
+    });
+  });
+
+  stage.addEventListener("mouseleave", ()=>{
+    document.querySelectorAll(".circle.glow")
+      .forEach(c=>c.classList.remove("glow"));
+  });
+})();
+</script>
+
+
+<script>
+(function(){
+  const t = document.getElementById("instructionsToggle");
+  const b = document.getElementById("instructionsBody");
+  if(!t || !b) return;
+
+  function setOpen(open){
+    b.hidden = !open;
+    t.setAttribute("aria-expanded", open ? "true" : "false");
+    const icon = t.querySelector(".howto-icon");
+    if(icon){
+      icon.textContent = open ? "X" : "!";
+    }
+  }
+
+  t.addEventListener("click", ()=>{
+    setOpen(b.hidden);
+  });
+
+  t.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter" || e.key === " "){
+      e.preventDefault();
+      setOpen(b.hidden);
+    }
+  });
+})();
+</script>
+
+
+<script>
+
+/* Legacy isolated department view disabled */
+function isolateSelected(){ return; }
+function isolateSelectedDirect(){ return; }
+
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", ()=>{
+  const btn = document.getElementById("resetLayoutBtn");
+  if(btn) btn.remove();
+});
+</script>
+
+
+<script>
+document.addEventListener("DOMContentLoaded", ()=>{
+  const b = document.getElementById("exportDeptLayoutBtn");
+  if(b) b.remove();
+});
+</script>
+
+
+<script>
+
+let LAYOUT_MODE = "starburst";
+const layoutToggleBtn = document.getElementById("layoutToggleBtn");
+
+function layoutTraditional(){
+  pos.clear(); relOffset.clear(); edges = [];
+  buildIndex();
+
+  const root = rootPerson();
+  const levelY = 140;
+  const colGap = 180;
+
+  const levels = new Map();
+  function walk(id, depth){
+    if(!levels.has(depth)) levels.set(depth, []);
+    levels.get(depth).push(id);
+    (children.get(id)||[]).forEach(cid=>walk(cid, depth+1));
+  }
+  walk(root.id, 0);
+
+  levels.forEach((ids, depth)=>{
+    const totalW = (ids.length-1) * colGap;
+    ids.forEach((id,i)=>{
+      const x = CENTER.x - totalW/2 + i*colGap;
+      const y = CENTER.y + depth*levelY;
+      pos.set(id, {x,y});
+    });
+  });
+
+  for(const p of DATA){
+    if(p.reportsTo){
+      edges.push({from:p.reportsTo,to:p.id,kind:"normal"});
+    }
+  }
+}
+
+layoutToggleBtn.onclick = ()=>{
+  LAYOUT_MODE = (LAYOUT_MODE === "starburst") ? "traditional" : "starburst";
+  // Button text should describe the *action* (what you'll switch to next)
+  layoutToggleBtn.textContent =
+    LAYOUT_MODE === "starburst" ? "View in Traditional" : "View in Starburst";
+
+  if(LAYOUT_MODE === "traditional"){
+    layoutTraditional();
+    autoLoadLayout('traditional');
+    render();
+    centerChart();
+    return;
+  }
+
+  // STARBURST: honor layout.json / saved baseline first
+  const baseline = (typeof getBaselineLayout === "function") ? getBaselineLayout() : null;
+
+  if(baseline && applyLayout(baseline)){
+    render();
+    centerChart();
+  }else{
+    layoutStarburst();
+    autoLoadLayout('starburst');
+    render();
+    centerChart();
+  }
+};
+</script>
+
+
+
+<script>
+document.addEventListener("DOMContentLoaded", ()=>{
+  const menu = document.getElementById("hamburgerMenu");
+  if(!menu) return;
+
+  const btn = document.createElement("button");
+  btn.id = "saveTraditionalLayoutBtn";
+  btn.textContent = "Save Traditional Layout";
+  btn.disabled = true;
+  menu.appendChild(btn);
+
+  function update(){
+    btn.disabled = !(window.AUTHOR_MODE && window.LAYOUT_MODE === "traditional");
+  }
+  setInterval(update, 250);
+
+  btn.onclick = ()=>{
+    if(!window.AUTHOR_MODE || window.LAYOUT_MODE !== "traditional") return;
+    const snap = snapshotLayout();
+    downloadJSON("layout_traditional.json", snap);
+    toast("Saved layout_traditional.json");
+  };
+});
+</script>
+
+</body>
+
+</html>
