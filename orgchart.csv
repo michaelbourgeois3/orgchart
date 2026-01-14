@@ -1,5 +1,5 @@
 id,name,title,department,reportsto,leader,phone,email,office,photo
-susan-bourgeois,Susan Bourgeois,Secretary,Office of the Secretary,,True,(225) 555-1000,susan.bourgeois@la.gov,LaSalle 1136,https://randomuser.me/api/portraits/men/0.jpg
+susan-bourgeois,Susan Bourgeois,Secretary,Office of the Secretary,,True,(225) 555-1000,susan.bourgeois@la.gov,LaSalle 1136,https://randomuser.me/api/portraits/women/45.jpg
 anne-villa,Anne Villa,Deputy Secretary,Office of the Secretary,susan-bourgeois,True,(225) 555-1001,anne.villa@la.gov,LaSalle 1155A,https://randomuser.me/api/portraits/women/1.jpg
 sandra-granata,Sandra Granata,Executive Office Director,Office of the Secretary,susan-bourgeois,True,(225) 555-1002,sandra.granata@la.gov,LaSalle 1138,https://randomuser.me/api/portraits/men/2.jpg
 arthur-cooper,Arthur Cooper,"Senior Director, Special Projects",Office of the Secretary,susan-bourgeois,True,(225) 555-1003,arthur.cooper@la.gov,LaSalle 1155,https://randomuser.me/api/portraits/women/3.jpg
